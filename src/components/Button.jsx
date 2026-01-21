@@ -1,18 +1,143 @@
-import React from 'react'
+import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
+import { useRef, useState } from "react";
 
-export default function Button() {
+// interface MagneticButtonProps {
+//   children: React.ReactNode;
+//   className?: string;
+//   onClick?: () => void;
+// }
+
+const MagneticButton = ({
+  children,
+  className = "",
+  onClick,
+}) => {
+  const buttonRef = useRef(null);
+  const [isHovered, setIsHovered] = useState(false);
+
+  // Motion values for cursor position relative to button center
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+
+  // Angle for chromatic gradient rotation
+  const gradientAngle = useMotionValue(0);
+
+  // Spring physics for smooth, elastic movement
+  const springConfig = { damping: 15, stiffness: 150, mass: 0.1 };
+  const springX = useSpring(mouseX, springConfig);
+  const springY = useSpring(mouseY, springConfig);
+
+  // Smooth gradient angle
+  const smoothAngle = useSpring(gradientAngle, { damping: 20, stiffness: 80 });
+
+  // Text follows with more intensity
+  const textX = useSpring(useTransform(mouseX, (v) => v * 0.4), springConfig);
+  const textY = useSpring(useTransform(mouseY, (v) => v * 0.4), springConfig);
+
+  // Shine position
+  const shineX = useMotionValue(50);
+  const shineY = useMotionValue(50);
+
+  const handleMouseMove = (e) => {
+    if (!buttonRef.current) return;
+
+    const rect = buttonRef.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    // Calculate distance from center
+    const distX = e.clientX - centerX;
+    const distY = e.clientY - centerY;
+
+    // Magnetic pull strength
+    const strength = 0.35;
+    mouseX.set(distX * strength);
+    mouseY.set(distY * strength);
+
+    // Calculate angle for gradient rotation (liquid metal effect)
+    const angle = Math.atan2(distY, distX) * (180 / Math.PI) + 180;
+    gradientAngle.set(angle);
+
+    // Shine position
+    const normX = ((e.clientX - rect.left) / rect.width) * 100;
+    const normY = ((e.clientY - rect.top) / rect.height) * 100;
+    shineX.set(normX);
+    shineY.set(normY);
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    mouseX.set(0);
+    mouseY.set(0);
+  };
+
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+  };
+
   return (
-    <div className="h-screen w-full bg-neutral-900 flex items-center justify-center" 
-    style={{
-        backgroundImage:"radial-gradient (circle at 0.5px 0.5px, rgba(6,182,212,0.2) 0.5px, transparent 0)",
-        backgroundSize : "8px 8px",
-        backgroundRepeat : "repeat"
-    }}>
-        <button className='group relative text-neutral-500 px-12 py-4 rounded-lg bg-black shadow-[0px_1px_2px_0px_rgba(255,255,255,0.1)_inset,0px_-1px_2px_0px_rgba(255,255,255,0.1)_inset]'>Click This!
+    <motion.button
+      ref={buttonRef}
+      className={`magnetic-button ${className}`}
+      onClick={onClick}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      style={{
+        x: springX,
+        y: springY,
+      }}
+      whileTap={{ scale: 0.95 }}
+    >
+      {/* Chromatic glow effect */}
+      <motion.div
+        className="magnetic-button-chromatic-glow"
+        animate={{
+          opacity: isHovered ? 1 : 0.4,
+          scale: isHovered ? 1.05 : 1,
+        }}
+        style={{
+          "--gradient-angle": smoothAngle,
+        }}
+        transition={{ duration: 0.3 }}
+      />
 
-            <span className='absolute inset-x-0 bottom-px bg-gradient-to-r from-transparent via-white to-transparent h-px w-3/4 mx-auto'></span>
-            <span className='absolute opacity-0 group-hover:opacity-100 transition-opacity duration-300 inset-x-0 bottom-px bg-gradient-to-r from transparent via-white to-transparent h-[4px] w-full mx-auto blur-sm'></span>
-        </button>
-    </div>
+      {/* Chromatic border */}
+      <motion.div
+        className="magnetic-button-chrome"
+        animate={{
+          scale: isHovered ? 1.01 : 1,
+        }}
+        style={{
+          "--gradient-angle": smoothAngle,
+        }}
+        transition={{ duration: 0.2 }}
+      />
+
+      {/* Shine overlay */}
+      <motion.div
+        className="magnetic-button-shine"
+        style={{
+          "--shine-x": useTransform(shineX, (v) => `${v}%`),
+          "--shine-y": useTransform(shineY, (v) => `${v}%`),
+        } }
+        animate={{
+          opacity: isHovered ? 1 : 0,
+        }}
+      />
+
+      {/* Text content */}
+      <motion.span
+        className="magnetic-button-text"
+        style={{
+          x: textX,
+          y: textY,
+        }}
+      >
+        {children}
+      </motion.span>
+    </motion.button>
   );
-}
+};
+
+export default MagneticButton;

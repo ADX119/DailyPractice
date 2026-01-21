@@ -6,10 +6,9 @@ import Button from './components/Button';
 
 function App() {
 
-  return (
-    
-     <Button/>
-  );
+  return <div className="flex min-h-screen items-center justify-center bg-neutral-900">
+    <Button />
+  </div>;
 }
 
 export default App
